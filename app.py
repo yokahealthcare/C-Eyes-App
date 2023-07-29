@@ -1,25 +1,20 @@
-import streamlit as st
-from streamlit_webrtc import webrtc_streamer
-# import cv2
+from streamlit_webrtc import webrtc_streamer, RTCConfiguration
+import av
+import cv2
 
-## This sample code is from https://www.twilio.com/docs/stun-turn/api
-# Download the helper library from https://www.twilio.com/docs/python/install
-import os
-from twilio.rest import Client
+cascade = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
+class VideoProcessor:
+    def recv(self, frame):
+        frm = frame.to_ndarray(format="bgr24")
 
-# Find your Account SID and Auth Token at twilio.com/console
-# and set the environment variables. See http://twil.io/secure
-account_sid = "AC3d859f24db7a4ee4b6b0023e30eb60a6"
-auth_token = "3727cfab3c86504e8739d35ae65585b1"
-client = Client(account_sid, auth_token)
+        faces = cascade.detectMultiScale(cv2.cvtColor(frm, cv2.COLOR_BGR2GRAY), 1.1, 3)
 
-token = client.tokens.create()
+        for x, y, w, h in faces:
+            cv2.rectangle(frm, (x, y), (x + w, y + h), (0, 255, 0), 3)
+
+        return av.VideoFrame.from_ndarray(frm, format='bgr24')
 
 
-# Then, pass the ICE server information to webrtc_streamer().
-webrtc_streamer(
-  key="sample",
-  rtc_configuration={
-      "iceServers": token.ice_servers
-  }
-)
+webrtc_streamer(key="key", video_processor_factory=VideoProcessor,
+                rtc_configuration=RTCConfiguration( {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+                )
