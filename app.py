@@ -1,20 +1,28 @@
-from streamlit_webrtc import webrtc_streamer, RTCConfiguration
-import av
+import streamlit as st
 import cv2
 
+video = cv2.VideoCapture("video.mp4")
+frame_placeholder = st.empty()
+stop_button_pressed = st.button("Stop")
+
 cascade = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
-class VideoProcessor:
-    def recv(self, frame):
-        frm = frame.to_ndarray(format="bgr24")
 
-        faces = cascade.detectMultiScale(cv2.cvtColor(frm, cv2.COLOR_BGR2GRAY), 1.1, 3)
+while video.isOpened() and not stop_button_pressed:
+    ret, frame = video.read()
 
-        for x, y, w, h in faces:
-            cv2.rectangle(frm, (x, y), (x + w, y + h), (0, 255, 0), 3)
+    if not ret:
+        st.write("The video has ended!")
+        break
 
-        return av.VideoFrame.from_ndarray(frm, format='bgr24')
+    faces = cascade.detectMultiScale(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), 1.1, 3)
 
+    for x, y, w, h in faces:
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
 
-webrtc_streamer(key="key", video_processor_factory=VideoProcessor,
-                rtc_configuration=RTCConfiguration( {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
-                )
+    frame_placeholder.image(frame, channels="BGR")
+
+    if cv2.waitKey(1) & 0xFF == ord("q") or stop_button_pressed:
+        break
+
+video.release()
+cv2.destroyAllWindows()
